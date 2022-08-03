@@ -1,0 +1,7 @@
+spModal.open({
+title: <title>,
+message: <message>,
+buttons: [
+{label:'OK', primary: true}
+],
+});

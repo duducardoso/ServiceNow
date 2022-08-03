@@ -1,0 +1,269 @@
+#### HTML Template ####
+
+<div ng-if="!data.isValid">
+    ${Record not found}
+</div>
+<div ng-if="data.isValid">
+    <div class="panel panel-{{::options.color}} b">
+        <div class="panel-heading">
+            <h2 class="panel-title">${Approval request for} {{::data.task.system}} - {{::data.task.number}}</h2>
+        </div>
+
+        <div class="panel-body">
+            <div ng-if="data.task.short_description"><label>${Title}:</label> {{::data.task.short_description}}</div>
+            <div ng-if="data.task.docState"><label>${Status}:</label> {{::data.task.docState}}</div>
+            <div ng-if="::data.task.approver"><label>${Approver}:</label> {{::data.task.approver}}</div>
+            <div ng-if="data.task.requested"><label>${Requested}:</label> {{::data.task.requested}}</div>
+            <br />
+            <form name="userForm" ng-submit="$event.preventDefault()" class="form-horizontal">
+
+                <div ng-if="c.data.isMine && (data.task.state == 'requested')">
+
+                    <div ng-if="data.attachment.length > 0">
+                        <label>${Files}:</label>
+                        <div ng-repeat="attach in data.attachment">
+                            <div class="row">
+                                <div ng-class="contentColClass">
+                                    <a ng-href="{{::attach.url}}" id="attach_{{::attach.sys_id}}"
+                                        title="{{attach.description}}">
+                                        {{::attach.file_name}}
+                                    </a>
+                                    <span ng-if="attach.description"> - </span>
+                                    <span ng-if="attach.description">{{::attach.description}}</span>
+                                </div>
+
+                            </div>
+                        </div>
+                    </div>
+                    <div class="question">
+
+
+                        <div ng-if="c.data.btnCheckApproveReject">
+                            <button type="button" name="approve" id="approve" class="btn btn-primary btn-question"
+                                ng-click="c.check('approved')">${Approve}</button>
+                            <div class="spacer"></div>
+                            <button type="button" name="reject" id="reject" class="btn btn-default btn-question"
+                                ng-click="c.check('rejected')">${Reject}</button>
+                        </div>
+
+                        <div ng-if="c.data.btnYesNoApprove">
+                            <h4>
+                                ${Confirm}
+                            </h4><br />
+                            <button type="button" name="approveYes" id="approveYes" class="btn btn-primary btn-question"
+                                ng-click="c.action(userForm, 'approved')">${Yes}</button>
+                            <div class="spacer"></div>
+                            <button type="button" name="approveNo" id="approveNo" class="btn btn-default btn-question"
+                                ng-click="c.check('no')">${No}</button>
+                        </div>
+
+                        <div class="form-group"
+                            ng-class="{'has-error':userForm.descricao.$touched && userForm.descricao.$invalid}"
+                            ng-if="c.data.btnConfirmCancelReject">
+                            <label class="control-label" for="reason">
+                                ${Reason}*
+                            </label>
+                            <textarea ng-model="c.reason" id="reason" name="reason" class="form-control"
+                                aria-required="true" rows="2" cols="20" required></textarea>
+                            <br />
+                            <button type="button" name="confirmReject" id="confirmReject"
+                                class="btn btn-primary btn-question" ng-disabled="userForm.$invalid"
+                                ng-click="c.action(userForm, 'rejected')">${Reject}</button>
+                            <div class="spacer"></div>
+                            <button type="button" name="cancelReject" id="cancelReject"
+                                class="btn btn-default btn-question" ng-click="c.check('cancel')">${Cancel}</button>
+                        </div>
+
+
+
+
+                    </div>
+                </div>
+            </form>
+
+        </div>
+        <div class="panel-heading">
+            <h2 class="panel-title">${Details}</h2>
+            <div ng-if="data.task.source_table"><label>${source_table}:</label> {{::data.task.source_table}}</div>
+        </div>
+        <div class="panel-body">
+            <div ng-bind-html="data.htmlContent"></div>
+        </div>
+
+    </div>
+</div>
+
+
+#### Client script ####
+api.controller = function ($scope) {
+  /* widget controller */
+  var c = this;
+
+
+  c.data.btnCheckApproveReject = true;
+  c.data.btnYesNoApprove = false;
+  c.data.btnConfirmCancelReject = false;
+
+
+  $scope.contentColClass = "col-xs-12";
+
+  c.action = function (userForm, action) {
+
+    if (action == 'rejected') {
+      c.data.reason = userForm.reason.$viewValue;
+
+    } else {
+      c.data.reason = '';
+    }
+
+    c.server.get({
+      'reason': c.data.reason,
+      'action': action
+    }).then(function (response) {
+
+    });
+    //var url = "/rh?id=rh_resultados";
+    //$location.url(url);
+    window.location.href = "/sp";
+
+  }
+
+  c.check = function (type) {
+    if (type == 'rejected') {
+      c.data.btnCheckApproveReject = false;
+      c.data.btnConfirmCancelReject = true;
+    }
+
+    if (type == 'approved') {
+      c.data.btnCheckApproveReject = false;
+      c.data.btnYesNoApprove = true;
+    }
+
+    if (type == 'cancel') {
+      c.data.btnCheckApproveReject = true;
+      c.data.btnConfirmCancelReject = false;
+    }
+
+    if (type == 'no') {
+      c.data.btnCheckApproveReject = true;
+      c.data.btnYesNoApprove = false;
+    }
+
+  }
+
+
+
+};
+
+
+#### server script #####
+
+(function () {
+  /* populate the 'data' object */
+  /* e.g., data.table = $sp.getValue('table'); */
+
+
+  var helper = new x_tbgb_documentos.TBGHelperServer();
+  var user = gs.getUserID();
+  var delegatesTo = helper.isDelegate(user);
+
+  data.instance_name = gs.getProperty('glide.servlet.uri');
+  gs.error(data.instance_name);
+  data.isValid = false;
+  data.isMine = false;
+
+  var sysID = $sp.getParameter('sys_id');
+
+  var grApproval = new GlideRecord('sysapproval_approver');
+  grApproval.addQuery('sys_id', sysID);
+  grApproval.query();
+  if (grApproval.next()) {
+    data.isValid = true;
+
+
+    if (input && input.action == 'rejected') {
+
+      grApproval.setValue('state', 'rejected');
+      grApproval.comments = input.reason;
+      grApproval.update();
+      return;
+    }
+
+    if (input && input.action == 'approved') {
+
+      grApproval.setValue('state', 'approved');
+      grApproval.update();
+      return;
+    }
+
+
+
+
+    if (grApproval.approver == user) {
+      data.isMine = true;
+    }
+
+    if (!data.isMine && delegatesTo.isDelegate) {
+      var delegates = delegatesTo.sysIDList.toString().split(',');
+      for (var i = 0; i < delegates.length; i++) {
+        if (grApproval.approver == delegates[i]) {
+          data.isMine = true;
+        }
+      }
+    }
+
+    var attachment = [];
+
+    if (data.isMine) {
+      var attachment = [];
+      var grAttachment = new GlideRecord('sys_attachment');
+      grAttachment.addEncodedQuery('table_sys_id=' + grApproval.sysapproval.sys_id);
+      grAttachment.query();
+      while (grAttachment.next()) {
+
+        var e = {};
+        e.sys_id = grAttachment.sys_id + '';
+        e.description = grAttachment.u_description + '';
+        e.file_name = grAttachment.file_name + '';
+        e.url = data.instance_name + 'sys_attachment.do?sys_id=' + grAttachment.sys_id + '&sysparm_this_url=';
+        attachment.push(e);
+      }
+
+    }
+
+    var task = {};
+
+    task.state = grApproval.state + '';
+    task.sys_id = grApproval.sys_id + '';
+    task.docState = grApproval.getDisplayValue('sysapproval.state');
+    task.approver = grApproval.getDisplayValue('approver');
+    task.requested = grApproval.getDisplayValue('sys_created_on');
+    task.short_description = grApproval.sysapproval.short_description + '';
+    task.number = grApproval.sysapproval.number + '';
+    task.system = grApproval.getDisplayValue('sysapproval.sys_class_name');
+
+    var sourceTable = grApproval.source_table + '';
+    var grCurrentDoc = new GlideRecord(sourceTable);
+    grCurrentDoc.get(grApproval.document_id + '');
+
+    var htmlContent = '';
+
+    switch (sourceTable) {
+      case 'x_tbgb_documentos_dcd':
+        htmlContent = new x_tbgb_documentos.tbgDCDCEDHtmlContent().htmlContent(grCurrentDoc);
+        break;
+      case 'x_tbgb_sga_change_management_system':
+        htmlContent = new x_tbgb_sga.tbgSgmHtmlContent().htmlContent(grCurrentDoc);
+        break;
+
+    }
+
+
+
+    data.task = task;
+    data.attachment = attachment;
+    data.htmlContent = htmlContent[0];
+  }
+  return data;
+
+})();

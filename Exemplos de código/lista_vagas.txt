@@ -1,0 +1,47 @@
+<div>
+
+  <div ng-repeat="vaga in data.vagas" class="sp-approval m-b-xl">
+            <div class="row">
+                <div ng-class="contentColClass">
+                        <div ng-if="vaga.numero"><label>Número:</label> {{::vaga.numero}}</div>
+                        <div ng-if="vaga.nome"><label>Nome:</label> {{::vaga.nome}}</div>
+                      
+                    
+                </div>
+            </div>
+        </div>
+  
+  
+</div>
+
+
+api.controller=function($scope) {
+  /* widget controller */
+  var c = this;
+};
+
+
+(function() {
+  /* populate the 'data' object */
+  /* e.g., data.table = $sp.getValue('table'); */
+	
+	data.vagas = [];
+	
+	var grVagas = new GlideRecord('x_404635_vagas_rh_opportunities');
+	grVagas.addQuery('active', true);
+	grVagas.orderBy('short_description');
+	grVagas.query();
+	while(grVagas.next()){
+		var dados = {};
+		dados.nome = grVagas.short_description + '';
+		dados.numero = grVagas.number + '';
+	
+		data.vagas.push(dados);
+			
+	}
+	
+	return data;
+	
+	
+
+})();
